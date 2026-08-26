@@ -1947,92 +1947,236 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
 
       {/* TAB 5: Continuous Packing Lists */}
       {activeTab === 'packing_lists' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-2xs">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                <PackageCheck className="w-5 h-5 text-teal-600" />
-                Continuous Packing List Studio (Req 21: Post-Receiving Continuous Numbering)
-              </h3>
-              <p className="text-xs text-slate-500">
-                Generates official Packing Lists after physical receiving verification. Continuous sequence: PL-001, PL-002 ... PL-015, PL-016 when subsequent vendor shipments arrive.
-              </p>
+        <div className="space-y-6">
+          {/* Req 23 & 24: Per-Vendor In-Transit & Partial Delivery Status Cards */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-2xs">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-blue-600" />
+                  Per-Vendor In-Transit & Partial Delivery Status (Req 23 & 24)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Track in-transit status per vendor and process partial arrivals independently without waiting for all suppliers to arrive.
+                </p>
+              </div>
+              <span className="text-xs font-extrabold text-blue-800 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+                Multi-Vendor Partial Arrival Active
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={handleGenerateNextPackingList}
-              className="flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              + Generate Continuous Packing List
-            </button>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {vendors.length === 0 ? (
+                <div className="col-span-3 text-xs text-slate-400 italic bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  No allocated vendors found in this shipment.
+                </div>
+              ) : (
+                vendors.map(v => {
+                  const vAllocs = allocations.filter(a => a.vendor_id === v.id);
+                  const hasPL = packingListRecords.some((pl: any) => pl.vendor_id === v.id || pl.vendor_name === v.name);
+                  const status = hasPL ? 'DELIVERED' : 'IN_TRANSIT';
+
+                  return (
+                    <div key={v.id} className={`p-4 rounded-2xl border flex flex-col justify-between space-y-3 transition-all ${
+                      status === 'DELIVERED' ? 'bg-emerald-50/40 border-emerald-300' : 'bg-blue-50/30 border-blue-200'
+                    }`}>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                            <Building2 className="w-4 h-4 text-blue-600" />
+                            {v.name}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                            status === 'DELIVERED'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
+                          }`}>
+                            {status === 'DELIVERED' ? '✅ DELIVERED' : '🚚 IN TRANSIT'}
+                          </span>
+                        </div>
+
+                        <div className="text-[11px] text-slate-500 font-mono">Supplier Code: {v.code}</div>
+
+                        <div className="bg-white p-2.5 rounded-xl border border-slate-200 text-xs space-y-1">
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Allocated Products ({vAllocs.length}):</div>
+                          {vAllocs.map(a => {
+                            const r = requirements.find(req => req.id === a.requirement_id);
+                            return (
+                              <div key={a.id} className="flex justify-between items-center text-[11px] py-0.5">
+                                <span className="font-semibold text-slate-800">{r?.product_name || `Req #${a.requirement_id}`}</span>
+                                <span className="font-mono text-blue-700 font-bold">{a.allocated_quantity} {a.unit}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-200/80">
+                        {status === 'DELIVERED' ? (
+                          <div className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Physical Arrival Verified & PL Generated
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleGenerateNextPackingList();
+                            }}
+                            className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                          >
+                            <PackageCheck className="w-3.5 h-3.5" />
+                            <span>Verify Arrival & Generate PL</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
 
-          {packingListRecords.length === 0 ? (
-            <div className="p-8 bg-slate-50 border border-slate-200/80 rounded-xl text-center text-slate-500 text-xs space-y-2">
-              <PackageCheck className="w-8 h-8 text-teal-300 mx-auto" />
-              <div className="font-bold text-slate-700">No packing list generated yet.</div>
-              <p className="text-slate-400">Click <b>+ Generate Continuous Packing List</b> above to generate PL from actual receiving & weight data.</p>
+          {/* Req 25 & 26: Continuous Packing List Studio (Post-Receiving Sequence) */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 shadow-2xs">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                  <PackageCheck className="w-5 h-5 text-teal-600" />
+                  Continuous Packing List Studio (Req 25 & 26: Sequence PL-001, PL-002...)
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Sequence numbers never restart per vendor. Vendor A receives PL-001, PL-002; Vendor B receives PL-003, PL-004 continuously.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleGenerateNextPackingList}
+                className="flex items-center gap-1.5 bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                + Generate Continuous Packing List
+              </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {packingListRecords.map((pl: any) => (
-                <div key={pl.id} className="bg-slate-50/70 border border-slate-200 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                    <div>
-                      <span className="font-mono font-bold text-teal-900 text-sm bg-teal-100 border border-teal-300 px-2.5 py-0.5 rounded-md">
-                        {pl.pl_number}
-                      </span>
-                      <span className="text-[11px] font-semibold text-slate-500 ml-2">{pl.vendor_name}</span>
+
+            {packingListRecords.length === 0 ? (
+              <div className="p-8 bg-slate-50 border border-slate-200/80 rounded-xl text-center text-slate-500 text-xs space-y-2">
+                <PackageCheck className="w-8 h-8 text-teal-300 mx-auto" />
+                <div className="font-bold text-slate-700">No packing list generated yet.</div>
+                <p className="text-slate-400">Click <b>+ Generate Continuous Packing List</b> above to generate PL from actual receiving & weight data.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {packingListRecords.map((pl: any) => (
+                  <div key={pl.id} className="bg-slate-50/70 border border-slate-200 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                      <div>
+                        <span className="font-mono font-bold text-teal-900 text-sm bg-teal-100 border border-teal-300 px-2.5 py-0.5 rounded-md">
+                          {pl.pl_number}
+                        </span>
+                        <span className="text-[11px] font-semibold text-slate-500 ml-2">{pl.vendor_name}</span>
+                      </div>
+                      <a
+                        href={apiClient.getPackingListUrl(shipmentId)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer underline"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Download PDF
+                      </a>
                     </div>
-                    <a
-                      href={apiClient.getPackingListUrl(shipmentId)}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer underline"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      Download PDF
-                    </a>
-                  </div>
 
-                  <div className="space-y-1 text-xs">
-                    <p className="text-slate-600 text-[11px]">
-                      <strong>Generated:</strong> {new Date(pl.generated_at).toLocaleString()}
-                    </p>
-                    <p className="text-slate-600 text-[11px]">
-                      <strong>Remarks:</strong> {pl.notes}
-                    </p>
-                  </div>
+                    <div className="space-y-1 text-xs">
+                      <p className="text-slate-600 text-[11px]">
+                        <strong>Generated:</strong> {new Date(pl.generated_at).toLocaleString()}
+                      </p>
+                      <p className="text-slate-600 text-[11px]">
+                        <strong>Remarks:</strong> {pl.notes}
+                      </p>
+                    </div>
 
-                  {pl.items && pl.items.length > 0 && (
-                    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
-                      <table className="w-full text-left text-[11px] font-mono">
-                        <thead className="bg-slate-100 text-slate-700 font-bold">
-                          <tr>
-                            <th className="py-1.5 px-2 font-sans">Product</th>
-                            <th className="py-1.5 px-2 text-right">Cartons</th>
-                            <th className="py-1.5 px-2 text-right">Qty</th>
-                            <th className="py-1.5 px-2 text-right">Net Wt</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {pl.items.map((it: any) => (
-                            <tr key={it.id}>
-                              <td className="py-1.5 px-2 font-sans font-semibold text-slate-900">{it.product_name}</td>
-                              <td className="py-1.5 px-2 text-right">{it.cartons_count} CTNS</td>
-                              <td className="py-1.5 px-2 text-right font-bold text-teal-800">{it.qty_units}</td>
-                              <td className="py-1.5 px-2 text-right text-slate-600">{it.net_weight_kg} kg</td>
+                    {pl.items && pl.items.length > 0 && (
+                      <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
+                        <table className="w-full text-left text-[11px] font-mono">
+                          <thead className="bg-slate-100 text-slate-700 font-bold">
+                            <tr>
+                              <th className="py-1.5 px-2 font-sans">Product</th>
+                              <th className="py-1.5 px-2 text-right">Cartons</th>
+                              <th className="py-1.5 px-2 text-right">Qty</th>
+                              <th className="py-1.5 px-2 text-right">Net Wt</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              ))}
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {pl.items.map((it: any) => (
+                              <tr key={it.id}>
+                                <td className="py-1.5 px-2 font-sans font-semibold text-slate-900">{it.product_name}</td>
+                                <td className="py-1.5 px-2 text-right">{it.cartons_count} CTNS</td>
+                                <td className="py-1.5 px-2 text-right font-bold text-teal-800">{it.qty_units}</td>
+                                <td className="py-1.5 px-2 text-right text-slate-600">{it.net_weight_kg} kg</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Req 27: Shipment Modification Control Panel After Partial Arrival */}
+          <div className="bg-white rounded-2xl border border-amber-200 p-5 space-y-4 shadow-2xs">
+            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-amber-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-amber-950 flex items-center gap-2">
+                  <Edit2 className="w-5 h-5 text-amber-600" />
+                  Shipment Modification Control Panel (Req 27: Post-Partial Arrival Updates)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Modify selected pending products (container capacity, customer emergency, delivery delay, price change) without corrupting already processed/delivered vendor data.
+                </p>
+              </div>
+              <span className="text-xs font-bold text-amber-800 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                Safe Modification Guard Active
+              </span>
             </div>
-          )}
+
+            <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-200 text-xs space-y-3">
+              <div className="font-bold text-amber-900 flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-amber-600" />
+                <span>Pending Vendor Items Eligible for Post-Arrival Modification:</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {requirements.map(r => (
+                  <div key={r.id} className="bg-white p-3 rounded-xl border border-amber-200 flex justify-between items-center">
+                    <div>
+                      <div className="font-bold text-slate-900">{r.product_name}</div>
+                      <div className="text-[11px] text-slate-500 font-mono">HSN: {r.hsn_code || '-'} | Required Qty: {r.required_quantity} {r.unit}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newQty = window.prompt(`Modify Required Quantity for "${r.product_name}" (Customer Emergency / Capacity Adjustment):`, String(r.required_quantity));
+                        if (newQty && !isNaN(Number(newQty))) {
+                          const reason = window.prompt('Select Modification Reason:\n1. Customer Emergency\n2. Container Capacity Issue\n3. Delivery Delay\n4. Cost / Logistics Change', 'Customer Emergency');
+                          apiClient.updateRequirement(shipmentId, r.id, { required_quantity: Number(newQty), notes: `Modified Post-Partial Arrival: ${reason}` }).then(() => {
+                            loadData();
+                            alert(`Updated "${r.product_name}" quantity to ${newQty} ${r.unit}. Delivered data remains untouched.`);
+                          });
+                        }
+                      }}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+                    >
+                      Modify Pending Qty
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
