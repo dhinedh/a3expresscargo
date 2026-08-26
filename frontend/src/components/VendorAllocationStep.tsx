@@ -1430,11 +1430,45 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
 
           {/* Quotations Table */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h4 className="text-sm font-bold text-slate-800">Quotation Line Items ({quotationItems.length})</h4>
                 <p className="text-xs text-slate-500">Customer product decisions: Approve, Remove, or Request Price Negotiation.</p>
               </div>
+
+              {vendors.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-extrabold text-blue-900 bg-blue-100 px-2.5 py-1 rounded-lg border border-blue-300 flex items-center gap-1">
+                    <Send className="w-3.5 h-3.5 text-blue-600" />
+                    Re-send Updated Sheet to Vendor:
+                  </span>
+                  {vendors.map(v => (
+                    <div key={v.id} className="flex items-center gap-1 bg-white px-2 py-1 rounded-xl border border-blue-200 shadow-2xs">
+                      <span className="text-[11px] font-bold text-slate-800 font-sans">{v.name}:</span>
+                      <a
+                        href={apiClient.getVendorRfqPdfUrl(shipmentId, v.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                        title={`Download & Send Updated Requirement PDF to ${v.name}`}
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>PDF</span>
+                      </a>
+                      <a
+                        href={apiClient.getVendorRfqExcelUrl(shipmentId, v.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold rounded-lg transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                        title={`Download & Send Updated Requirement Excel to ${v.name}`}
+                      >
+                        <FileSpreadsheet className="w-3 h-3" />
+                        <span>Excel</span>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {loadingQuotation ? (
