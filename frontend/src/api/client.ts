@@ -268,6 +268,31 @@ export const apiClient = {
     return `${API_BASE}/shipments/${shipmentId}/documents/vendor-rfq/${vendorId}/excel`;
   },
 
+  // ── Customer Requirements ──────────────────────────────────────────────────
+  getCustomerRequirements: async (shipmentId: number): Promise<ShipmentCustomerRequirement[]> => {
+    const res = await axios.get(`${API_BASE}/shipments/${shipmentId}/requirements`);
+    return res.data;
+  },
+
+  addCustomerRequirement: async (shipmentId: number, data: any): Promise<ShipmentCustomerRequirement> => {
+    const res = await axios.post(`${API_BASE}/shipments/${shipmentId}/requirements`, data);
+    return res.data;
+  },
+
+  updateRequirement: async (shipmentId: number, reqId: number, data: Partial<ShipmentCustomerRequirement>): Promise<ShipmentCustomerRequirement> => {
+    const res = await axios.put(`${API_BASE}/shipments/${shipmentId}/requirements/${reqId}`, data);
+    return res.data;
+  },
+
+  deleteRequirement: async (shipmentId: number, reqId: number): Promise<void> => {
+    await axios.delete(`${API_BASE}/shipments/${shipmentId}/requirements/${reqId}`);
+  },
+
+  getRequirementHistory: async (shipmentId: number): Promise<CustomerRequirementHistory[]> => {
+    const res = await axios.get(`${API_BASE}/shipments/${shipmentId}/requirements/history`);
+    return res.data;
+  },
+
   // Soft Remove Product with Audit Trail
   softRemoveProduct: async (shipmentId: number, productId: number, reason: string): Promise<Shipment> => {
     const res = await axios.post(`${API_BASE}/shipments/${shipmentId}/products/${productId}/remove?reason=${encodeURIComponent(reason)}`);
