@@ -38,12 +38,14 @@ import type {
 
 interface VendorAllocationStepProps {
   shipmentId: number;
+  initialTab?: 'allocation' | 'proforma' | 'quotation' | 'payments' | 'audit' | 'packing_lists';
   onFinish: () => void;
   onBack?: () => void;
 }
 
 export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
   shipmentId,
+  initialTab,
   onFinish,
   onBack
 }) => {
@@ -56,6 +58,7 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
   const [converting, setConverting] = useState<boolean>(false);
   type TabType = 'allocation' | 'proforma' | 'quotation' | 'payments' | 'audit' | 'packing_lists';
   const [activeTab, setActiveTabState] = useState<TabType>(() => {
+    if (initialTab) return initialTab;
     const saved = localStorage.getItem(`a3_shipment_${shipmentId}_sub_tab`);
     return (saved as TabType) || 'allocation';
   });

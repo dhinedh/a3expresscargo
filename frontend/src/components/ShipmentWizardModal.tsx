@@ -335,7 +335,10 @@ export const ShipmentWizardModal: React.FC<ShipmentWizardModalProps> = ({
             <CustomerRequirementsStep
               shipmentId={createdShipment.id}
               customers={createdShipment.customers || []}
-              onNext={() => setCurrentStep(3)}
+              onNext={() => {
+                localStorage.removeItem(`a3_shipment_${createdShipment.id}_sub_tab`);
+                setCurrentStep(3);
+              }}
               onBack={() => setCurrentStep(1)}
             />
           )}
@@ -344,6 +347,7 @@ export const ShipmentWizardModal: React.FC<ShipmentWizardModalProps> = ({
           {currentStep === 3 && createdShipment && (
             <VendorAllocationStep
               shipmentId={createdShipment.id}
+              initialTab="allocation"
               onBack={() => setCurrentStep(2)}
               onFinish={() => {
                 onSelectShipment(createdShipment.id);
