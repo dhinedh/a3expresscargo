@@ -16,6 +16,8 @@ import type { Chapter, TariffLine, PaginatedTariffResponse } from './types';
 import { apiClient } from './api/client';
 import './utils/toast';
 import { ToastContainer } from './components/ToastContainer';
+import { Navbar } from './components/Navbar';
+import { ShipmentWizardModal } from './components/ShipmentWizardModal';
 import { ItemEntryPage } from './pages/ItemEntryPage';
 import { ShipmentsPage } from './pages/ShipmentsPage';
 import { ShipmentDetailPage } from './pages/ShipmentDetailPage';
@@ -26,8 +28,9 @@ import { Truck } from 'lucide-react';
 
 export function App() {
   // Active navigation tab
-  const [activeTab, setActiveTab] = useState<'shipments' | 'shipment_detail' | 'customers' | 'vendors' | 'dashboard' | 'tariff' | 'items'>('shipments');
+  const [activeTab, setActiveTab] = useState<string>('shipments');
   const [selectedShipmentId, setSelectedShipmentId] = useState<number | null>(null);
+  const [showNavWizardModal, setShowNavWizardModal] = useState<boolean>(false);
 
   // Tariff State
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -136,100 +139,30 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans">
-      {/* Top Header */}
-      <header className="bg-slate-900 text-white shadow-md border-b border-slate-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-xl text-white shadow-xs">
-              <Ship className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-lg font-extrabold tracking-tight flex items-center gap-2">
-                A3 EXPRESS SOFTWARE
-                <span className="text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full border border-blue-400/30">
-                  v2.0 PRO
-                </span>
-              </h1>
-              <p className="text-xs text-slate-400">Shipment Management, Tariff Calculation & Freight Documentation System</p>
-            </div>
-          </div>
+      {/* Top Dropdown Navbar */}
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onOpenCreateShipment={() => setShowNavWizardModal(true)}
+        onOpenAddVendor={() => setActiveTab('vendors')}
+        onOpenAddCustomer={() => setActiveTab('customers')}
+      />
 
-          {/* Navigation Bar */}
-          <nav className="flex items-center gap-1 bg-slate-800/80 p-1 rounded-xl border border-slate-700/50">
-            <button
-              onClick={() => setActiveTab('shipments')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'shipments' || activeTab === 'shipment_detail'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <Ship className="w-3.5 h-3.5" />
-              Shipments
-            </button>
+      {/* Global Toast Container */}
+      <ToastContainer />
 
-            <button
-              onClick={() => setActiveTab('customers')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'customers'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              Customer Master
-            </button>
-
-            <button
-              onClick={() => setActiveTab('vendors')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'vendors'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <Truck className="w-3.5 h-3.5" />
-              Vendor Master
-            </button>
-
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'dashboard'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              SI Dashboard
-            </button>
-
-            <button
-              onClick={() => setActiveTab('tariff')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'tariff'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <Database className="w-3.5 h-3.5" />
-              Tariff DB
-            </button>
-
-            <button
-              onClick={() => setActiveTab('items')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'items'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-              }`}
-            >
-              <PackagePlus className="w-3.5 h-3.5" />
-              Item Master
-            </button>
-          </nav>
-        </div>
-      </header>
+      {/* Navbar Create Shipment Launcher Modal */}
+      {showNavWizardModal && (
+        <ShipmentWizardModal
+          isOpen={showNavWizardModal}
+          onClose={() => setShowNavWizardModal(false)}
+          onShipmentCreated={(sId) => {
+            setShowNavWizardModal(false);
+            setSelectedShipmentId(sId);
+            setActiveTab('shipment_detail');
+          }}
+        />
+      )}
 
       {/* Global Toast Container */}
       <ToastContainer />
