@@ -655,6 +655,7 @@ def get_vendor_payment_summary(shipment_id: int, db: Session = Depends(get_db)):
     for v_id in vendor_ids:
         vendor = db.query(models.Vendor).filter(models.Vendor.id == v_id).first()
         v_name = vendor.name if vendor else f"Vendor #{v_id}"
+        v_code = vendor.code if vendor else f"VEND-{v_id}"
         v_payments = [p for p in payments if p.vendor_id == v_id]
 
         v_po = next((po for po in pos if po.vendor_id == v_id), None)
