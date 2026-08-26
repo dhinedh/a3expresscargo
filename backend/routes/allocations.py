@@ -514,10 +514,9 @@ def convert_pi_items_to_shipment_products(shipment_id: int, db: Session = Depend
         models.ShipmentVendorProformaItem.shipment_id == shipment_id
     ).all()
 
-    shipment_customers = [sc.customer_id for sc in s.customers]
-    default_cust_id = shipment_customers[0] if shipment_customers else db.query(models.Customer).first().id
-
-    cat_counts = {}
+    shipment_customers = [sc.customer_id for sc in s.customers if sc.customer]
+    first_cust = db.query(models.Customer).first()
+    default_cust_id = shipment_customers[0] if shipment_customers else (first_cust.id if first_cust else 1)
 
     for pi in proforma_items:
         # Check if already added to shipment products
@@ -527,47 +526,50 @@ def convert_pi_items_to_shipment_products(shipment_id: int, db: Session = Depend
         ).first()
 
         if not existing:
-            # Auto lookup tariff line or match favorite
+            # Auto lookup item entry or use PI HSN
             fav = db.query(models.ItemEntry).filter(
                 models.ItemEntry.item_name.ilike(f"%{pi.product_name}%")
             ).first()
 
-            hsn = fav.hs_code if fav else "1905.31.10"
-            if hsn:
-                base_prefix = hsn.split(".")[0] + "." + hsn.split(".")[1] if "." in hsn and len(hsn.split(".")) >= 3 else hsn[:6]
-                if base_prefix not in cat_counts:
-                    db_count = db.query(models.func.count(models.ShipmentProduct.id)).filter(
-                        models.ShipmentProduct.shipment_id == shipment_id,
-                        models.ShipmentProduct.hsn_code.like(f"{base_prefix}%")
-                    ).scalar() or 0
-                    cat_counts[base_prefix] = db_count
-                cat_counts[base_prefix] += 1
-                hsn = format_sub_hsn(hsn, cat_counts[base_prefix])
+            hsn = fav.hs_code if (fav and hasattr(fav, 'hs_code') and fav.hs_code) else (pi.hsn_code or "1008.291")
+            cat_name = fav.item_category if (fav and hasattr(fav, 'item_category') and fav.item_category) else "General Goods"
 
             sp = models.ShipmentProduct(
                 shipment_id=shipment_id,
                 customer_id=default_cust_id,
                 product_name=pi.product_name,
-                product_category=fav.item_category if fav else "General Goods",
+                product_category=cat_name,
                 hsn_code=hsn,
-                quantity=pi.proforma_qty,
-                weight_val=pi.unit_weight_val,
+                quantity=float(pi.proforma_qty or 1.0),
+                weight_val=float(pi.unit_weight_val or 0.5),
                 weight_unit="KG",
                 unit="PCS",
-                purchase_price=pi.proforma_price,
+                purchase_price=float(pi.proforma_price or 0.0),
                 currency="INR",
-                no_bags_qty=pi.cartons_count,
-                pkt_size_g=pi.units_per_carton,
-                net_weight_kg=pi.net_weight_kg,
-                gross_weight_kg=pi.gross_weight_kg
+                no_bags_qty=int(pi.cartons_count or 1),
+                pkt_size_g=float(pi.units_per_carton or 12.0),
+                net_weight_kg=float(pi.net_weight_kg or 0.0),
+                gross_weight_kg=float(pi.gross_weight_kg or 0.0)
             )
             db.add(sp)
 
     s.status = "CONFIGURED"
     db.commit()
-    recalculate_shipment(db, s)
+    
+    try:
+        recalculate_shipment(db, s)
+    except Exception as e:
+        print(f"Recalculate shipment notice: {e}")
+
+    try:
+        from mongo_sync import sync_shipment_to_mongo
+        sync_shipment_to_mongo(shipment_id)
+    except Exception as e:
+        print(f"Mongo sync notice: {e}")
 
     # Return shipment details
+    from routes.shipments import get_shipment_details
+    return get_shipment_details(shipment_id, db)
     from routes.shipments import get_shipment_details
     return get_shipment_details(shipment_id, db)
 
