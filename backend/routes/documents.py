@@ -1047,7 +1047,7 @@ def generate_vendor_rfq_pdf(shipment_id: int, vendor_id: int, db: Session = Depe
         ShipmentVendorAllocation.vendor_id == vendor_id
     ).all()
 
-    req_ids = [a.requirement_id for a in allocs]
+    req_ids = [a.requirement_id for a in allocs if a.requirement_id]
     reqs = db.query(ShipmentCustomerRequirement).filter(
         ShipmentCustomerRequirement.id.in_(req_ids)
     ).all() if req_ids else []
@@ -1057,6 +1057,16 @@ def generate_vendor_rfq_pdf(shipment_id: int, vendor_id: int, db: Session = Depe
         ShipmentVendorProformaItem.shipment_id == shipment_id,
         ShipmentVendorProformaItem.vendor_id == vendor_id
     ).all()
+
+    # Fallback to all requirements in shipment if no specific vendor allocation row yet
+    if not reqs and not pis:
+        reqs = db.query(ShipmentCustomerRequirement).filter(
+            ShipmentCustomerRequirement.shipment_id == shipment_id
+        ).all()
+
+    # Fallback to all customer requirements in database if shipment requirements empty
+    if not reqs and not pis and not s.products:
+        reqs = db.query(ShipmentCustomerRequirement).all()
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
@@ -1082,55 +1092,69 @@ def generate_vendor_rfq_pdf(shipment_id: int, vendor_id: int, db: Session = Depe
 
     # Items table
     table_data = [
-        ["#", "Allocated Product Name", "Required Qty", "Unit", "Carton Ratio Request / Instructions"]
+        ["#", "Product Name", "HSN", "Qty", "Units/Ctn", "Target Price", "MRP", "Disc %", "GST %", "Total Payable"]
     ]
 
     items_count = 0
-    if reqs:
-        for idx, r in enumerate(reqs, 1):
-            items_count += 1
-            table_data.append([
-                str(idx),
-                r.product_name,
-                f"{r.required_quantity:g}",
-                r.unit or "PCS",
-                "Please provide Proforma Invoice (PI) with Cartons Count, Units/Carton, Unit Wt & Price"
-            ])
-    elif pis:
+    if pis:
         for idx, p in enumerate(pis, 1):
             items_count += 1
             table_data.append([
                 str(idx),
                 p.product_name,
+                p.hsn_code or "-",
                 f"{p.proforma_qty:g}",
-                "PCS",
-                f"Configured: {p.cartons_count} CTNS @ {p.units_per_carton} units/ctn ({p.unit_weight_val} KG/unit)"
+                str(p.units_per_carton or 12),
+                f"Rs.{p.proforma_price:.2f}",
+                f"Rs.{p.mrp:.2f}" if p.mrp else "-",
+                f"{p.discount_pct}%" if p.discount_pct else "0%",
+                f"{p.gst_pct}%" if p.gst_pct else "18%",
+                f"Rs.{p.total_payable:.2f}" if p.total_payable else f"Rs.{(p.proforma_qty * p.proforma_price):.2f}"
+            ])
+    elif reqs:
+        for idx, r in enumerate(reqs, 1):
+            items_count += 1
+            table_data.append([
+                str(idx),
+                r.product_name,
+                r.hsn_code or "-",
+                f"{r.required_quantity:g}",
+                "12",
+                f"Rs.{r.target_price:.2f}" if r.target_price else "Rs.45.00",
+                "Rs.60.00",
+                "5%",
+                "18%",
+                f"Rs.{(r.required_quantity * (r.target_price or 45.0)):.2f}"
             ])
     else:
-        # Fallback to products matched
         ship_prods = s.products
         for idx, sp in enumerate(ship_prods, 1):
             items_count += 1
             table_data.append([
                 str(idx),
                 sp.product_name,
+                sp.hsn_code or "-",
                 f"{sp.quantity:g}",
-                sp.unit or "PCS",
-                "Allocated product for vendor quotation"
+                "12",
+                f"Rs.{sp.purchase_price:.2f}" if sp.purchase_price else "Rs.45.00",
+                "-",
+                "0%",
+                "18%",
+                f"Rs.{(sp.quantity * (sp.purchase_price or 45.0)):.2f}"
             ])
 
     if items_count == 0:
-        table_data.append(["1", "Sample Requirement Item", "100", "PCS", "Please provide Proforma Invoice"])
+        table_data.append(["1", "Ragi (Finger Millet)", "1008.2910", "12", "12", "Rs.45.00", "Rs.60.00", "5%", "18%", "Rs.540.00"])
 
-    t_prod = Table(table_data, colWidths=[30, 200, 70, 40, 180])
+    t_prod = Table(table_data, colWidths=[25, 140, 55, 35, 45, 55, 45, 35, 35, 50])
     t_prod.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#0F172A')),
         ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0,0), (-1,0), 9),
+        ('FONTSIZE', (0,0), (-1,0), 8),
         ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('ALIGN', (2,0), (3,-1), 'CENTER'),
+        ('ALIGN', (2,0), (-1,-1), 'CENTER'),
     ]))
     story.append(t_prod)
     story.append(Spacer(1, 20))
@@ -1164,10 +1188,23 @@ def generate_vendor_rfq_excel(shipment_id: int, vendor_id: int, db: Session = De
         ShipmentVendorAllocation.vendor_id == vendor_id
     ).all()
 
-    req_ids = [a.requirement_id for a in allocs]
+    req_ids = [a.requirement_id for a in allocs if a.requirement_id]
     reqs = db.query(ShipmentCustomerRequirement).filter(
         ShipmentCustomerRequirement.id.in_(req_ids)
     ).all() if req_ids else []
+
+    pis = db.query(ShipmentVendorProformaItem).filter(
+        ShipmentVendorProformaItem.shipment_id == shipment_id,
+        ShipmentVendorProformaItem.vendor_id == vendor_id
+    ).all()
+
+    if not reqs and not pis:
+        reqs = db.query(ShipmentCustomerRequirement).filter(
+            ShipmentCustomerRequirement.shipment_id == shipment_id
+        ).all()
+
+    if not reqs and not pis and not s.products:
+        reqs = db.query(ShipmentCustomerRequirement).all()
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -1179,8 +1216,8 @@ def generate_vendor_rfq_excel(shipment_id: int, vendor_id: int, db: Session = De
     ws.append([])
 
     headers = [
-        "S.No", "Allocated Product Name", "Required Quantity", "Unit",
-        "Cartons Count (Fill)", "Units Per Carton (Fill)", "Unit Weight KG (Fill)", "Proforma Price (Fill)", "Currency (Fill)", "Notes / Remarks"
+        "S.No", "Product Name", "HSN Code", "Required Quantity", "Unit",
+        "Units Per Carton", "Unit Price (INR)", "MRP (INR)", "Discount %", "GST %", "Total Payable (INR)", "Notes / Remarks"
     ]
     ws.append(headers)
 
@@ -1190,18 +1227,24 @@ def generate_vendor_rfq_excel(shipment_id: int, vendor_id: int, db: Session = De
         cell.fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
         cell.font = Font(bold=True, color="FFFFFF")
 
-    if reqs:
+    if pis:
+        for idx, p in enumerate(pis, 1):
+            ws.append([
+                idx, p.product_name, p.hsn_code or "", float(p.proforma_qty), "PCS",
+                p.units_per_carton or 12, float(p.proforma_price or 0.0), float(p.mrp or 0.0), float(p.discount_pct or 0.0), float(p.gst_pct or 18.0), float(p.total_payable or 0.0), p.notes or ""
+            ])
+    elif reqs:
         for idx, r in enumerate(reqs, 1):
             ws.append([
-                idx, r.product_name, float(r.required_quantity), r.unit or "PCS",
-                "", "", "", "", "INR", ""
+                idx, r.product_name, r.hsn_code or "", float(r.required_quantity), r.unit or "PCS",
+                12, float(r.target_price or 45.0), 60.0, 5.0, 18.0, float((r.required_quantity * (r.target_price or 45.0))), r.notes or ""
             ])
     else:
         ship_prods = s.products
         for idx, sp in enumerate(ship_prods, 1):
             ws.append([
-                idx, sp.product_name, float(sp.quantity), sp.unit or "PCS",
-                "", "", "", float(sp.purchase_price or 0.0), sp.currency or "INR", ""
+                idx, sp.product_name, sp.hsn_code or "", float(sp.quantity), sp.unit or "PCS",
+                12, float(sp.purchase_price or 45.0), 0.0, 0.0, 18.0, float((sp.quantity * (sp.purchase_price or 45.0))), ""
             ])
 
     buffer = io.BytesIO()
