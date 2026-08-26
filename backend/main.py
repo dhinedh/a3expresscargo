@@ -4,6 +4,8 @@ from database import engine, Base
 from migrate_db import run_migrations
 from routes import ingest, tariff, export, items, customers, shipments, documents, excel_ingest, vendors, requirements, allocations
 
+from mongo_sync import restore_shipments_from_mongo
+
 # Auto-migrate SQLite schema & create database tables if they do not exist
 try:
     run_migrations()
@@ -11,6 +13,12 @@ except Exception as e:
     print(f"Migration notice: {e}")
 
 Base.metadata.create_all(bind=engine)
+
+# Auto-restore shipments from MongoDB Atlas cloud if container restarted
+try:
+    restore_shipments_from_mongo()
+except Exception as e:
+    print(f"Mongo restore notice: {e}")
 
 app = FastAPI(
     title="A3 Express Software - Shipment & Tariff API",

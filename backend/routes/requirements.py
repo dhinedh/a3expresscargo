@@ -189,6 +189,11 @@ def add_customer_requirement(shipment_id: int, payload: schemas.ShipmentCustomer
 
     db.commit()
     db.refresh(req)
+    try:
+        from mongo_sync import sync_shipment_to_mongo
+        sync_shipment_to_mongo(shipment_id)
+    except Exception as e:
+        print(f"Mongo sync notice: {e}")
     return req
 
 @router.put("/{shipment_id}/requirements/{req_id}", response_model=schemas.ShipmentCustomerRequirementResponse)

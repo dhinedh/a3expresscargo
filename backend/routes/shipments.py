@@ -205,6 +205,11 @@ def create_shipment(payload: ShipmentCreate, db: Session = Depends(get_db)):
 
     db.commit()
     db.refresh(shipment)
+    try:
+        from mongo_sync import sync_shipment_to_mongo
+        sync_shipment_to_mongo(shipment.id)
+    except Exception as e:
+        print(f"Mongo sync notice: {e}")
     return get_shipment_details(shipment.id, db)
 
 
