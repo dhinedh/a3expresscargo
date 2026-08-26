@@ -2186,9 +2186,9 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
           type="button"
           onClick={() => {
             if (activeTab === 'proforma') setActiveTab('allocation');
-            else if (activeTab === 'payments') setActiveTab('proforma');
-            else if (activeTab === 'audit') setActiveTab('payments');
-            else if (activeTab === 'packing_lists') setActiveTab('audit');
+            else if (activeTab === 'audit') setActiveTab('proforma');
+            else if (activeTab === 'payments') setActiveTab('audit');
+            else if (activeTab === 'packing_lists') setActiveTab('payments');
             else if (activeTab === 'allocation' && onBack) onBack();
           }}
           className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all flex items-center gap-2 cursor-pointer"
@@ -2197,9 +2197,9 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
           <span>
             {activeTab === 'allocation' ? 'Back to Stage 1: Requirements' :
              activeTab === 'proforma' ? 'Back to Supplier Allocation' :
-             activeTab === 'payments' ? 'Back to Proforma Invoices' :
-             activeTab === 'audit' ? 'Back to Vendor Payments' :
-             'Back to Actual Invoice Audit'}
+             activeTab === 'audit' ? 'Back to Proforma Invoices' :
+             activeTab === 'payments' ? 'Back to Customer Quotations' :
+             'Back to Vendor Payments'}
           </span>
         </button>
 
@@ -2230,16 +2230,16 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
               type="button"
               onClick={() => {
                 if (activeTab === 'allocation') setActiveTab('proforma');
-                else if (activeTab === 'proforma') setActiveTab('payments');
-                else if (activeTab === 'payments') setActiveTab('audit');
-                else if (activeTab === 'audit') setActiveTab('packing_lists');
+                else if (activeTab === 'proforma') setActiveTab('audit');
+                else if (activeTab === 'audit') setActiveTab('payments');
+                else if (activeTab === 'payments') setActiveTab('packing_lists');
               }}
               className="px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-2 cursor-pointer"
             >
               <span>
                 {activeTab === 'allocation' ? 'Next: Proforma Invoices & Packing' :
-                 activeTab === 'proforma' ? 'Next: Vendor Payments' :
-                 activeTab === 'payments' ? 'Next: Actual Invoice Audit' :
+                 activeTab === 'proforma' ? 'Next: Customer Quotation & Decisions' :
+                 activeTab === 'audit' ? 'Next: Vendor Payments' :
                  'Next: Continuous Packing Lists'}
               </span>
               <ArrowRight className="w-4 h-4" />
