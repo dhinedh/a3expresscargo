@@ -477,28 +477,21 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
 
   // Auto-detect HSN Code and Allocated Vendor when Product Name changes in Proforma Item Modal
   const handleProductChangeInPiForm = async (prodName: string) => {
-    let detectedHsn = '';
-    let autoVendorId = piForm.vendor_id;
+    // Find matching requirement from Stage 1
+    const matchingReq = requirements.find(r => r.product_name.toLowerCase().trim() === prodName.toLowerCase().trim());
+    const reqQty = matchingReq ? (matchingReq.required_quantity || 1) : 1;
+    const reqHsn = matchingReq ? (matchingReq.hsn_code || '') : '';
 
-    // 1. Check if an allocation exists in this shipment for this product
-    const matchingAlloc = allocations.find(a => {
-      const reqProd = a.requirement?.product_name || requirements.find(r => r.id === a.requirement_id)?.product_name || '';
-      return reqProd.toLowerCase().trim() === prodName.toLowerCase().trim();
-    });
-
-    if (matchingAlloc) {
-      autoVendorId = matchingAlloc.vendor_id;
-    } else {
-      // Check if productMatchMap has a last allocated vendor for a requirement with this product
-      const matchingReq = requirements.find(r => r.product_name.toLowerCase().trim() === prodName.toLowerCase().trim());
-      if (matchingReq && productMatchMap[matchingReq.id]?.last_allocated_vendor) {
-        autoVendorId = productMatchMap[matchingReq.id].last_allocated_vendor!.id;
-      }
+    // Find vendor allocated to this requirement
+    let autoVendorId = 0;
+    if (matchingReq) {
+      const matchAlloc = allocations.find(a => a.requirement_id === matchingReq.id);
+      if (matchAlloc) autoVendorId = matchAlloc.vendor_id;
     }
 
-    // 2. Search HSN Code from database / catalog / tariff lines
+    let detectedHsn = reqHsn;
     try {
-      if (prodName.trim().length >= 2) {
+      if (!detectedHsn && prodName.trim().length >= 2) {
         const mainQuery = prodName.split('(')[0].trim();
         const innerQuery = prodName.match(/\(([^)]+)\)/)?.[1]?.trim() || '';
 
@@ -528,12 +521,26 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
       console.log('HSN search fallback error:', err);
     }
 
-    setPiForm(prev => ({
-      ...prev,
-      product_name: prodName,
-      vendor_id: autoVendorId || prev.vendor_id || (vendors.length > 0 ? vendors[0].id : 0),
-      hsn_code: detectedHsn || prev.hsn_code
-    }));
+    setPiForm(prev => {
+      const cartons = reqQty;
+      const unitsPerCarton = prev.units_per_carton || 12;
+      const uWeight = prev.unit_weight_val || 0.5;
+      const totalUnits = cartons * unitsPerCarton;
+      const netWt = totalUnits * uWeight;
+      const grossWt = Number((netWt * 1.05).toFixed(2));
+
+      return {
+        ...prev,
+        product_name: prodName,
+        vendor_id: autoVendorId || prev.vendor_id || (vendors.length > 0 ? vendors[0].id : 0),
+        hsn_code: detectedHsn || prev.hsn_code,
+        cartons_count: cartons,
+        units_per_carton: unitsPerCarton,
+        proforma_qty: totalUnits,
+        net_weight_kg: netWt,
+        gross_weight_kg: grossWt
+      };
+    });
   };
 
   const openPiModal = (item?: ShipmentVendorProformaItem) => {
@@ -561,8 +568,10 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
       });
     } else {
       setEditingPiId(null);
-      const defProdName = requirements.length > 0 ? requirements[0].product_name : '';
-      const defQty = requirements.length > 0 ? requirements[0].required_quantity : 120;
+      const req = requirements.length > 0 ? requirements[0] : null;
+      const defProdName = req ? req.product_name : '';
+      const defCartons = req ? (req.required_quantity || 1) : 1;
+      const defHsn = req ? (req.hsn_code || '') : '';
       
       const matchingAlloc = allocations.find(a => {
         const reqProd = a.requirement?.product_name || requirements.find(r => r.id === a.requirement_id)?.product_name || '';
@@ -570,18 +579,24 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
       });
       const defVendorId = matchingAlloc ? matchingAlloc.vendor_id : (vendors.length > 0 ? vendors[0].id : 0);
 
+      const defUnitsPerCarton = 12;
+      const defUnitWeight = 0.5;
+      const defTotalUnits = defCartons * defUnitsPerCarton;
+      const defNet = defTotalUnits * defUnitWeight;
+      const defGross = Number((defNet * 1.05).toFixed(2));
+
       setPiForm({
         vendor_id: defVendorId,
         product_name: defProdName,
         sku: '',
-        hsn_code: '',
-        proforma_qty: defQty,
-        cartons_count: 10,
-        units_per_carton: 12,
-        unit_weight_val: 0.5,
+        hsn_code: defHsn,
+        proforma_qty: defTotalUnits,
+        cartons_count: defCartons,
+        units_per_carton: defUnitsPerCarton,
+        unit_weight_val: defUnitWeight,
         unit_weight_unit: 'KG',
-        net_weight_kg: 60,
-        gross_weight_kg: 63,
+        net_weight_kg: defNet,
+        gross_weight_kg: defGross,
         proforma_price: 45,
         mrp: 60,
         discount_pct: 5,
@@ -590,10 +605,6 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
         currency: 'INR',
         notes: ''
       });
-
-      if (defProdName) {
-        handleProductChangeInPiForm(defProdName);
-      }
     }
     setShowPiModal(true);
   };
@@ -604,17 +615,17 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
       const updated = { ...prev, [field]: val };
 
       // Recalculate weights & total quantity when packing fields change
-      const cartons = field === 'cartons_count' ? Number(val) || 0 : prev.cartons_count;
-      const unitsPerCarton = field === 'units_per_carton' ? Number(val) || 0 : prev.units_per_carton;
-      const uWeight = field === 'unit_weight_val' ? Number(val) || 0 : prev.unit_weight_val;
+      const cartons = field === 'cartons_count' ? (Number(val) || 0) : prev.cartons_count;
+      const unitsPerCarton = field === 'units_per_carton' ? (Number(val) || 0) : prev.units_per_carton;
+      const uWeight = field === 'unit_weight_val' ? (Number(val) || 0) : prev.unit_weight_val;
 
       if (field === 'cartons_count' || field === 'units_per_carton' || field === 'unit_weight_val') {
         const totalUnits = cartons * unitsPerCarton;
         const netWt = totalUnits * uWeight;
-        const grossWt = netWt * 1.05;
-        updated.proforma_qty = totalUnits > 0 ? totalUnits : updated.proforma_qty;
+        const grossWt = Number((netWt * 1.05).toFixed(2));
+        updated.proforma_qty = totalUnits;
         updated.net_weight_kg = Number(netWt.toFixed(2));
-        updated.gross_weight_kg = Number(grossWt.toFixed(2));
+        updated.gross_weight_kg = grossWt;
       }
 
       return updated;
