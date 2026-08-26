@@ -5,6 +5,7 @@ from migrate_db import run_migrations
 from routes import ingest, tariff, export, items, customers, shipments, documents, excel_ingest, vendors, requirements, allocations
 
 from mongo_sync import restore_shipments_from_mongo
+from seed_demo import seed_demo_shipment_if_empty
 
 # Auto-migrate SQLite schema & create database tables if they do not exist
 try:
@@ -17,6 +18,7 @@ Base.metadata.create_all(bind=engine)
 # Auto-restore shipments from MongoDB Atlas cloud if container restarted
 try:
     restore_shipments_from_mongo()
+    seed_demo_shipment_if_empty()
 except Exception as e:
     print(f"Mongo restore notice: {e}")
 
