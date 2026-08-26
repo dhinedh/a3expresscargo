@@ -149,6 +149,45 @@ def restore_shipments_from_mongo():
                     )
                     sql_db.add(req)
 
+                # Restore Products
+                for p in doc.get("products", []):
+                    sp = models.ShipmentProduct(
+                        shipment_id=sh.id,
+                        customer_id=p.get("customer_id", 1),
+                        product_name=p.get("product_name"),
+                        hs_code=p.get("hs_code"),
+                        quantity=p.get("quantity", 1.0),
+                        unit=p.get("unit", "CARTON"),
+                        purchase_price=p.get("purchase_price", 0.0),
+                        purchase_currency=p.get("purchase_currency", "INR"),
+                        freight_cost_inr=p.get("freight_cost_inr", 0.0),
+                        calculated_duty_lkr=p.get("calculated_duty_lkr", 0.0),
+                        total_cost_lkr=p.get("total_cost_lkr", 0.0),
+                        final_quotation_price=p.get("final_quotation_price", 0.0)
+                    )
+                    sql_db.add(sp)
+
+                # Restore Allocations
+                for a in doc.get("allocations", []):
+                    alloc = models.ShipmentVendorAllocation(
+                        shipment_id=sh.id,
+                        requirement_id=a.get("requirement_id"),
+                        vendor_id=a.get("vendor_id"),
+                        allocated_quantity=a.get("allocated_quantity", 1.0),
+                        allocated_unit=a.get("allocated_unit", "CARTON"),
+                        vendor_quote_price=a.get("vendor_quote_price", 0.0),
+                        vendor_quote_currency=a.get("vendor_quote_currency", "INR"),
+                        rfq_sent=a.get("rfq_sent", False),
+                        status=a.get("status", "ALLOCATED")
+                    )
+                    sql_db.add(alloc)
+
+                # Restore Actuals
+                act = sql_db.query(models.ShipmentActual).filter(models.ShipmentActual.shipment_id == sh.id).first()
+                if not act:
+                    act = models.ShipmentActual(shipment_id=sh.id)
+                    sql_db.add(act)
+
                 sql_db.commit()
                 logger.info(f"Restored Shipment #{sh.shipment_no} from MongoDB Atlas.")
 
