@@ -60,45 +60,64 @@ def get_shipments(db: Session = Depends(get_db)):
     if not shipments:
         try:
             from mongo_sync import restore_shipments_from_mongo
-            restore_shipments_from_mongo()
+            restore_shipments_from_mongo(db)
+            db.expire_all()
             shipments = db.query(Shipment).order_by(Shipment.id.desc()).all()
         except Exception as e:
             print(f"Auto-restore from Mongo error: {e}")
 
     res = []
     for s in shipments:
-        custs = [sc.customer for sc in s.customers if sc.customer]
-        products_resp = []
-        for p in s.products:
-            p_dict = ShipmentProductResponse.model_validate(p)
-            cust_obj = next((c for c in custs if c.id == p.customer_id), None)
-            p_dict.customer_name = cust_obj.name if cust_obj else "Unknown"
-            products_resp.append(p_dict)
-            
-        s_resp = ShipmentResponse(
-            id=s.id,
-            shipment_no=s.shipment_no,
-            sequence_number=s.sequence_number,
-            financial_year=s.financial_year,
-            shipment_date=s.shipment_date,
-            status=s.status,
-            destination=s.destination or "Colombo Port, Sri Lanka",
-            currency=s.currency or "INR",
-            current_stage=s.current_stage or "1_SHIPMENT_CREATION",
-            usd_rate=s.usd_rate,
-            lkr_inr_rate=s.lkr_inr_rate,
-            profit_margin_pct=s.profit_margin_pct,
-            common_expenses_inr=s.common_expenses_inr,
-            common_expenses_lkr=s.common_expenses_lkr,
-            notes=s.notes,
-            created_at=s.created_at,
-            updated_at=s.updated_at,
-            customers=custs,
-            products=products_resp,
-            actuals=schemas.ShipmentActualResponse.model_validate(s.actuals, from_attributes=True) if s.actuals else None,
-            purchase_orders=[schemas.ShipmentPurchaseOrderResponse.model_validate(po, from_attributes=True) for po in (s.purchase_orders or [])]
-        )
-        res.append(s_resp)
+        try:
+            custs = [sc.customer for sc in s.customers if sc.customer]
+            products_resp = []
+            for p in s.products:
+                p_dict = ShipmentProductResponse.model_validate(p)
+                cust_obj = next((c for c in custs if c.id == p.customer_id), None)
+                p_dict.customer_name = cust_obj.name if cust_obj else "Unknown"
+                products_resp.append(p_dict)
+
+            po_resp = []
+            for po in (s.purchase_orders or []):
+                try:
+                    po_resp.append(schemas.ShipmentPurchaseOrderResponse.model_validate(po, from_attributes=True))
+                except Exception:
+                    pass
+
+            actual_resp = None
+            if s.actuals:
+                try:
+                    actual_resp = schemas.ShipmentActualResponse.model_validate(s.actuals, from_attributes=True)
+                except Exception:
+                    pass
+
+            s_resp = ShipmentResponse(
+                id=s.id,
+                shipment_no=s.shipment_no,
+                sequence_number=s.sequence_number,
+                financial_year=s.financial_year,
+                shipment_date=s.shipment_date,
+                status=s.status,
+                destination=s.destination or "Colombo Port, Sri Lanka",
+                currency=s.currency or "INR",
+                current_stage=s.current_stage or "1_SHIPMENT_CREATION",
+                usd_rate=s.usd_rate,
+                lkr_inr_rate=s.lkr_inr_rate,
+                profit_margin_pct=s.profit_margin_pct,
+                common_expenses_inr=s.common_expenses_inr,
+                common_expenses_lkr=s.common_expenses_lkr,
+                notes=s.notes,
+                created_at=s.created_at,
+                updated_at=s.updated_at,
+                customers=custs,
+                products=products_resp,
+                actuals=actual_resp,
+                purchase_orders=po_resp
+            )
+            res.append(s_resp)
+        except Exception as e:
+            print(f"Error serializing shipment #{s.id}: {e}")
+
     return res
 
 

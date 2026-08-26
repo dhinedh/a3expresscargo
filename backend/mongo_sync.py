@@ -94,13 +94,14 @@ def sync_shipment_to_mongo(shipment_id: int):
         sql_db.close()
 
 
-def restore_shipments_from_mongo():
+def restore_shipments_from_mongo(db_session=None):
     """Auto-restore shipments from MongoDB Atlas if local database container restarted."""
     db = get_mongo_db()
     if db is None:
         return
 
-    sql_db = SessionLocal()
+    sql_db = db_session if db_session is not None else SessionLocal()
+    should_close = db_session is None
     try:
         cloud_shipments = list(db.shipments_cloud.find())
         if not cloud_shipments:
@@ -195,4 +196,5 @@ def restore_shipments_from_mongo():
         sql_db.rollback()
         logger.error(f"Error restoring shipments from Mongo: {e}")
     finally:
-        sql_db.close()
+        if should_close:
+            sql_db.close()
