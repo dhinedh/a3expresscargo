@@ -32,7 +32,14 @@ def get_mongo_db():
     if MongoClient is None:
         return None
     if _mongo_client is None:
-        _mongo_client = MongoClient(MONGODB_URL)
+        try:
+            _mongo_client = MongoClient(MONGODB_URL, serverSelectionTimeoutMS=5000)
+            _mongo_client.admin.command('ping')
+            print("MongoDB Atlas Connected Successfully!")
+        except Exception as e:
+            print(f"MongoDB Atlas connection warning: {e}")
+            _mongo_client = None
+            return None
     return _mongo_client["a3_express"]
 
 def get_db():
