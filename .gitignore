@@ -1,10 +1,16 @@
+# Virtual Environments
+.venv/
+backend/.venv/
+venv/
+ENV/
+env/
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -20,8 +26,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-venv/
-ENV/
 
 # Node / Frontend
 node_modules/
