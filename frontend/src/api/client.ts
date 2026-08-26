@@ -231,37 +231,37 @@ export const apiClient = {
     return res.data;
   },
 
-  // Documents
+  // Documents & Exports Download URLs (Direct PDF & Excel)
   getQuotationUrl: (shipmentId: number, customerId: number) => {
-    return `${API_BASE}/shipments/${shipmentId}/documents/quotation?customer_id=${customerId}`;
+    return `${RAW_BASE}${API_BASE}/shipments/${shipmentId}/documents/quotation?customer_id=${customerId}`;
   },
 
   getIndianInvoiceUrl: (shipmentId: number) => {
-    return `${API_BASE}/shipments/${shipmentId}/documents/indian-invoice`;
+    return `${RAW_BASE}${API_BASE}/shipments/${shipmentId}/documents/indian-invoice`;
   },
 
   getColomboInvoiceUrl: (shipmentId: number) => {
-    return `${API_BASE}/shipments/${shipmentId}/documents/colombo-invoice`;
+    return `${RAW_BASE}${API_BASE}/shipments/${shipmentId}/documents/colombo-invoice`;
   },
 
   getPackingListUrl: (shipmentId: number) => {
-    return `${API_BASE}/shipments/${shipmentId}/documents/packing-list`;
+    return `${RAW_BASE}${API_BASE}/shipments/${shipmentId}/documents/packing-list`;
   },
 
   getDutyReportUrl: (shipmentId: number) => {
-    return `${API_BASE}/shipments/${shipmentId}/documents/duty-report`;
+    return `${RAW_BASE}${API_BASE}/shipments/${shipmentId}/documents/duty-report`;
   },
 
   getCmbBankExcelUrl: (shipmentId: number) => {
-    return `${API_BASE}/shipments/${shipmentId}/documents/cmb-bank-excel`;
+    return `${RAW_BASE}${API_BASE}/shipments/${shipmentId}/documents/cmb-bank-excel`;
   },
 
   getIndianExcelUrl: (shipmentId: number) => {
-    return `${API_BASE}/shipments/${shipmentId}/documents/indian-excel`;
+    return `${RAW_BASE}${API_BASE}/shipments/${shipmentId}/documents/indian-excel`;
   },
 
   getVendorRfqPdfUrl: (shipmentId: number, vendorId: number) => {
-    return `${API_BASE}/shipments/${shipmentId}/documents/vendor-rfq/${vendorId}/pdf`;
+    return `${RAW_BASE}${API_BASE}/shipments/${shipmentId}/documents/vendor-rfq/${vendorId}/pdf`;
   },
 
   getVendorRfqExcelUrl: (shipmentId: number, vendorId: number) => {

@@ -1986,7 +1986,7 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
                       <span className="text-[11px] font-semibold text-slate-500 ml-2">{pl.vendor_name}</span>
                     </div>
                     <a
-                      href={`http://localhost:8000/api/documents/packing-list?shipment_id=${shipmentId}`}
+                      href={apiClient.getPackingListUrl(shipmentId)}
                       target="_blank"
                       rel="noreferrer"
                       className="text-xs font-bold text-teal-700 hover:text-teal-900 flex items-center gap-1 cursor-pointer underline"
