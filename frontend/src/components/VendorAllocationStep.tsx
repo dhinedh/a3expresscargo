@@ -295,6 +295,39 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
     loadPackingLists();
   }, [shipmentId]);
 
+  // Post-Partial Arrival Product Modification Modal State (Req 27)
+  const [showModifyReqModal, setShowModifyReqModal] = useState<boolean>(false);
+  const [selectedModifyReq, setSelectedModifyReq] = useState<any | null>(null);
+  const [modifyReqForm, setModifyReqForm] = useState<{
+    new_qty: number;
+    unit: string;
+    reason: string;
+    notes: string;
+  }>({
+    new_qty: 1,
+    unit: 'CTNS',
+    reason: 'Customer Emergency',
+    notes: ''
+  });
+
+  const handleSaveModifyReq = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedModifyReq) return;
+
+    try {
+      await apiClient.updateRequirement(shipmentId, selectedModifyReq.id, {
+        required_quantity: modifyReqForm.new_qty,
+        unit: modifyReqForm.unit,
+        notes: `Modified Post-Partial Arrival (${modifyReqForm.reason}): ${modifyReqForm.notes || 'No extra notes'}`
+      });
+
+      setShowModifyReqModal(false);
+      fetchData();
+    } catch (err: any) {
+      console.error('Failed to modify pending requirement:', err);
+    }
+  };
+
   // Quick Create Vendor Modal State (Requirement 8: Inline Vendor Registration)
   const [showCreateVendorModal, setShowCreateVendorModal] = useState<boolean>(false);
   const [creatingVendor, setCreatingVendor] = useState<boolean>(false);
@@ -2159,14 +2192,14 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        const newQty = window.prompt(`Modify Required Quantity for "${r.product_name}" (Customer Emergency / Capacity Adjustment):`, String(r.required_quantity));
-                        if (newQty && !isNaN(Number(newQty))) {
-                          const reason = window.prompt('Select Modification Reason:\n1. Customer Emergency\n2. Container Capacity Issue\n3. Delivery Delay\n4. Cost / Logistics Change', 'Customer Emergency');
-                          apiClient.updateRequirement(shipmentId, r.id, { required_quantity: Number(newQty), notes: `Modified Post-Partial Arrival: ${reason}` }).then(() => {
-                            loadData();
-                            alert(`Updated "${r.product_name}" quantity to ${newQty} ${r.unit}. Delivered data remains untouched.`);
-                          });
-                        }
+                        setSelectedModifyReq(r);
+                        setModifyReqForm({
+                          new_qty: Number(r.required_quantity) || 1,
+                          unit: r.unit || 'CTNS',
+                          reason: 'Customer Emergency Request',
+                          notes: ''
+                        });
+                        setShowModifyReqModal(true);
                       }}
                       className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
                     >
@@ -3068,6 +3101,113 @@ export const VendorAllocationStep: React.FC<VendorAllocationStepProps> = ({
                   className="px-4 py-2 bg-indigo-700 hover:bg-indigo-800 text-white text-xs font-bold rounded-xl cursor-pointer shadow-xs"
                 >
                   Run 5-Way Comparison Audit
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 6: Post-Partial Arrival Product Modification Modal (Req 27) */}
+      {showModifyReqModal && selectedModifyReq && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4 animate-fadeIn">
+            <div className="flex items-center justify-between border-b border-amber-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Edit2 className="w-5 h-5 text-amber-600" />
+                  Modify Pending Product Quantity (Req 27)
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Update requirement quantity without altering or corrupting already delivered/processed vendor data.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowModifyReqModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveModifyReq} className="space-y-4 text-xs">
+              <div className="bg-amber-50/60 p-3 rounded-xl border border-amber-200 space-y-1">
+                <div className="font-bold text-slate-800 text-sm">{selectedModifyReq.product_name}</div>
+                <div className="text-[11px] font-mono text-slate-500">
+                  HSN: {selectedModifyReq.hsn_code || '-'} | Current Qty: <strong className="text-amber-800">{selectedModifyReq.required_quantity} {selectedModifyReq.unit}</strong>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">New Required Quantity *</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={modifyReqForm.new_qty}
+                    onChange={(e) => setModifyReqForm({ ...modifyReqForm, new_qty: Number(e.target.value) })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 font-mono font-bold"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700">Packaging Unit *</label>
+                  <select
+                    value={modifyReqForm.unit}
+                    onChange={(e) => setModifyReqForm({ ...modifyReqForm, unit: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="CTNS">CTNS (Cartons)</option>
+                    <option value="BAGS">BAGS (30kg/50kg Bags)</option>
+                    <option value="PCS">PCS (Units)</option>
+                    <option value="KG">KG (Kilograms)</option>
+                    <option value="BOXES">BOXES</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Modification Reason *</label>
+                <select
+                  value={modifyReqForm.reason}
+                  onChange={(e) => setModifyReqForm({ ...modifyReqForm, reason: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500 font-semibold text-slate-800"
+                >
+                  <option value="Customer Emergency Request">🚨 Customer Emergency Request</option>
+                  <option value="Container Capacity Adjustment">🚢 Container Capacity Adjustment</option>
+                  <option value="Supplier Delivery Delay">⏱️ Supplier Delivery Delay</option>
+                  <option value="Cost / Freight Rate Change">💰 Cost / Freight Rate Change</option>
+                  <option value="Product Availability Adjustment">📦 Product Availability Adjustment</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-slate-700">Audit Notes / Remarks (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g., Customer requested extra cartons due to urgent store opening"
+                  value={modifyReqForm.notes}
+                  onChange={(e) => setModifyReqForm({ ...modifyReqForm, notes: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-amber-500"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowModifyReqModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Save Modification & Log Audit</span>
                 </button>
               </div>
             </form>
