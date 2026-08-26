@@ -655,7 +655,7 @@ def get_vendor_payment_summary(shipment_id: int, db: Session = Depends(get_db)):
     for v_id in vendor_ids:
         vendor = db.query(models.Vendor).filter(models.Vendor.id == v_id).first()
         v_name = vendor.name if vendor else f"Vendor #{v_id}"
-        v_code = vendor.code if vendor else f"VEND-{v_id}"
+        v_payments = [p for p in payments if p.vendor_id == v_id]
 
         v_po = next((po for po in pos if po.vendor_id == v_id), None)
         if v_po and float(v_po.total_amount) > 0:
@@ -669,8 +669,6 @@ def get_vendor_payment_summary(shipment_id: int, db: Session = Depends(get_db)):
             if total_purchase == 0 and v_payments:
                 total_purchase = max(sum(float(p.amount_paid) for p in v_payments), max([float(p.amount_paid) for p in v_payments if p.payment_type == "ADVANCE"], default=0.0) * 1.6667)
 
-        v_payments = [p for p in payments if p.vendor_id == v_id]
-        
         advance_paid = sum(float(p.amount_paid) for p in v_payments if p.payment_type.upper() == "ADVANCE")
         balance_paid = sum(float(p.amount_paid) for p in v_payments if p.payment_type.upper() in ["BALANCE", "FULL"])
         total_paid = sum(float(p.amount_paid) for p in v_payments)

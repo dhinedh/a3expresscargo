@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import type { Chapter, TariffLine, PaginatedTariffResponse } from './types';
 import { apiClient } from './api/client';
+import './utils/toast';
+import { ToastContainer } from './components/ToastContainer';
 import { ItemEntryPage } from './pages/ItemEntryPage';
 import { ShipmentsPage } from './pages/ShipmentsPage';
 import { ShipmentDetailPage } from './pages/ShipmentDetailPage';
@@ -228,6 +230,9 @@ export function App() {
           </nav>
         </div>
       </header>
+
+      {/* Global Toast Container */}
+      <ToastContainer />
 
       {/* Main Content Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
