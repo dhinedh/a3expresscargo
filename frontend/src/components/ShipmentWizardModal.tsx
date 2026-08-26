@@ -34,8 +34,8 @@ export const ShipmentWizardModal: React.FC<ShipmentWizardModalProps> = ({
   const [nextSeqInfo, setNextSeqInfo] = useState<{ financial_year: string; next_sequence: number; shipment_no: string } | null>(null);
   const [numCustomers, setNumCustomers] = useState<number>(2);
   const [customerProfiles, setCustomerProfiles] = useState<CustomerFormData[]>([
-    { name: 'Customer 1', country: 'Sri Lanka' },
-    { name: 'Customer 2', country: 'Sri Lanka' }
+    { name: '', country: 'Sri Lanka' },
+    { name: '', country: 'Sri Lanka' }
   ]);
   const [configForm, setConfigForm] = useState({
     shipment_date: new Date().toISOString().split('T')[0],

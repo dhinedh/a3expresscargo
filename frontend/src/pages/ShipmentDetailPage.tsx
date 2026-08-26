@@ -405,7 +405,7 @@ export const ShipmentDetailPage: React.FC<ShipmentDetailPageProps> = ({ shipment
   // Customer Manage Modal State
   const [showCustomerManageModal, setShowCustomerManageModal] = useState(false);
   const [manageCustomerProfiles, setManageCustomerProfiles] = useState<CustomerFormData[]>([]);
-  const [quickAddCustomer, setQuickAddCustomer] = useState<CustomerFormData>({ name: 'Customer 1', country: 'Sri Lanka' });
+  const [quickAddCustomer, setQuickAddCustomer] = useState<CustomerFormData>({ name: '', country: 'Sri Lanka' });
 
   const openCustomerManageModal = () => {
     const existing = shipment?.customers || [];
@@ -420,7 +420,7 @@ export const ShipmentDetailPage: React.FC<ShipmentDetailPageProps> = ({ shipment
         tax_id: c.tax_id || ''
       })));
     } else {
-      setManageCustomerProfiles([{ name: 'Customer 1', country: 'Sri Lanka' }]);
+      setManageCustomerProfiles([{ name: '', country: 'Sri Lanka' }]);
     }
     setShowCustomerManageModal(true);
   };
